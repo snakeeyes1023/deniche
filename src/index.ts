@@ -159,7 +159,7 @@ async function notifyChange(): Promise<void> {
         return !previous.some((prevHouse: HouseType) => {
             return prevHouse.id === house.id;
         });
-    });
+    }) as HouseType[];
 
     if (newHouses.length > 0) {
         console.log('New houses found');
@@ -173,7 +173,7 @@ async function notifyChange(): Promise<void> {
         return !current.some((currHouse: HouseType) => {
             return currHouse.id === house.id;
         });
-    });
+    }) as HouseType[];
 
     if (removedHouses.length > 0) {
         console.log('Removed houses found');
