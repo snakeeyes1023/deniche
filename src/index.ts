@@ -15,8 +15,17 @@ dotenv.config({
 async function saveHouses(houses: HouseType[]): Promise<void> {
 
     // create the folder if it doesn't exist
+    if (!fs.existsSync('output')) {
+        fs.mkdirSync('output');
+    }
+
     if (!fs.existsSync('output/extract')) {
         fs.mkdirSync('output/extract');
+    }
+
+    if (houses.length === 0) {
+        console.log(chalk.yellow('No houses to save'));
+        return;
     }
 
     const date = new Date().toISOString().replace(/:/g, '-');

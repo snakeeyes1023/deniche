@@ -10,6 +10,11 @@
     "compile": "tsc && node copy-env.js && pkg . --out-path bin --targets node18-linux-x64,node18-macos-x64,node18-win-x64"
   },
   "bin": "dist/index.js",
+  "pkg": {
+    "scripts": [
+      "node_modules/axios/dist/node/*"
+    ]
+  },
   "author": "",
   "license": "ISC",
   "devDependencies": {
@@ -21,6 +26,7 @@
   "dependencies": {
     "@types/jsdom": "^21.1.6",
     "@types/node": "^20.11.18",
+    "axios": "^1.6.7",
     "jsdom": "^24.0.0",
     "puppeteer": "^22.0.0",
     "twilio": "^4.22.0"

@@ -23,8 +23,8 @@ export async function webScrapeRemax(storePageResult : boolean = false): Promise
     logTrace(`Navigating to ${remaxUrl}`);
     await page.goto(remaxUrl, { waitUntil: 'domcontentloaded' });
 
-    logTrace('Waiting 4 seconds for the page to load');
-    await new Promise(r => setTimeout(r, 4000));
+    logTrace('Waiting 6 seconds for the page to load');
+    await new Promise(r => setTimeout(r, 6000));
     logTrace('Page loaded');
 
     logTrace('Saving page content');
