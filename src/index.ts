@@ -1,125 +1,16 @@
-import { JSDOM } from 'jsdom';
 import fs from 'fs';
-import puppeteer from 'puppeteer';
-import { KnownDevices } from 'puppeteer';
 import * as dotenv from 'dotenv';
 import { HouseType } from './types/HouseType';
+import path from 'path';
+import chalk from 'chalk';
+import { webScrapeRemax } from './scrappers/remax-scapper';
+import twilio from "twilio";
 
-dotenv.config();
+const dotenvAbsolutePath = path.join(__dirname, '../.env');
 
-
-async function webScrape(): Promise<void> {
-    const iPhone = KnownDevices['iPhone 6'];
-    const browser = await puppeteer.launch();
-    const page = await browser.newPage();
-
-    await page.emulate(iPhone);
-
-    const remaxUrl = process.env.REMAX_URL;
-
-    if (remaxUrl === undefined) {
-        throw new Error('REMAX_URL is not defined');
-    }
-
-    await page.goto(remaxUrl, { waitUntil: 'domcontentloaded' });
-
-    await new Promise(r => setTimeout(r, 4000));
-
-    const content = await page.content();
-
-    const dom = new JSDOM(content);
-
-    await browser.close();
-
-    await savePageContent(dom);
-}
-
-async function savePageContent(page: JSDOM): Promise<void> {
-    const content = page.serialize();
-
-    // create the folder if it doesn't exist
-    if (!fs.existsSync('output')) {
-        fs.mkdirSync('output');
-    }
-
-    // save the content to a file with current date - time
-    const date = new Date().toISOString().replace(/:/g, '-');
-    fs.writeFileSync(`output/output-${date}.html`, content);
-
-    console.log('Page saved');
-
-    const houses = await extractHouses(page);
-
-    await saveHouses(houses);
-}
-
-async function extractHouses(page: JSDOM): Promise<HouseType[]> {
-
-    const houses = page.window.document.querySelectorAll('.results-lists a.card-property-thumbnail--results-list');
-
-    let houseList: HouseType[] = [];
-
-    houses.forEach(house => {
-        if (house === null) {
-            throw new Error('House is null');
-        }
-
-        const title: string | null | undefined = house.querySelector('.property-details--title')?.textContent?.trim();
-        const address: string | null | undefined = house.querySelector('.property-details--address')?.textContent?.trim();
-        const price: string | null | undefined = house.querySelector('.property-details--price')?.textContent?.trim();
-
-        const searchULS = () => {
-            const uls = house.querySelector('.small.small--light');
-            if (uls === null) {
-                return;
-            }
-            const glsContent = uls.textContent;
-
-            if (glsContent === null) {
-                return;
-            }
-
-            const regex = /ULS: (\d+)/;
-            const match = glsContent.match(regex);
-            if (match === null) {
-                return;
-            }
-            return match[1];
-        }
-
-        const searchTags = () => {
-            const tags = house.querySelectorAll('.status-tag');
-            if (tags === null) {
-                return;
-            }
-
-            let tagsList: string[] = [];
-
-            tags.forEach(tag => {
-                if (tag.textContent === null) {
-                    return;
-                }
-                tagsList.push(tag.textContent.trim());
-            });
-
-            return tagsList;
-        }
-
-        houseList.push({
-            id: searchULS() || "0",
-            name: title || '',
-            address: address || '',
-            price: price || '',
-            tags: searchTags() || []
-        });
-    });
-
-    if (houseList.length === 0) {
-        throw new Error('No houses found');
-    }
-
-    return houseList;
-}
+dotenv.config({
+    path: dotenvAbsolutePath
+});
 
 async function saveHouses(houses: HouseType[]): Promise<void> {
 
@@ -130,14 +21,21 @@ async function saveHouses(houses: HouseType[]): Promise<void> {
 
     const date = new Date().toISOString().replace(/:/g, '-');
     fs.writeFileSync(`output/extract/houses-${date}.json`, JSON.stringify(houses, null, 2));
+    console.log(chalk.green('Houses saved'));
 }
 
-async function notifyChange(): Promise<void> {
+async function getChanges(): Promise<{
+    newHouses: HouseType[],
+    removedHouses: HouseType[]
+}> {
     const files = fs.readdirSync('output/extract');
 
     if (files.length < 2) {
-        console.log('No previous file to compare with');
-        return;
+        console.log(chalk.yellow('No previous file to compare'));
+        return {
+            newHouses: [],
+            removedHouses: []
+        };
     }
 
     const lastFile = files[files.length - 1];
@@ -147,7 +45,7 @@ async function notifyChange(): Promise<void> {
     const previousFile = files[files.length - 2];
 
     if (previousFile === undefined) {
-        return;
+        throw new Error('Previous file is undefined');
     }
 
     const previousContent = fs.readFileSync(`output/extract/${previousFile}`, 'utf-8');
@@ -161,35 +59,76 @@ async function notifyChange(): Promise<void> {
         });
     }) as HouseType[];
 
-    if (newHouses.length > 0) {
-        console.log('New houses found');
-        console.log(newHouses);
-    }
-    else {
-        console.log('No new houses found');
-    }
-
     const removedHouses = previous.filter((house: HouseType) => {
         return !current.some((currHouse: HouseType) => {
             return currHouse.id === house.id;
         });
     }) as HouseType[];
 
-    if (removedHouses.length > 0) {
-        console.log('Removed houses found');
-        console.log(removedHouses);
+    return {
+        newHouses,
+        removedHouses
+    };
+}
+
+
+async function notifyChanges(newHouses: HouseType[], removedHouses: HouseType[]): Promise<void> {
+    const twilioClient = twilio(
+        process.env.TWILIO_ACCOUNT_SID,
+        process.env.TWILIO_AUTH_TOKEN
+    );
+
+    const handleUnique = (house: HouseType) => {
+        return `${house.price} - ${house.name} - ${house.address}`;
+    };
+
+    const handleMultiple = (houses: HouseType[]) => {
+        if (houses.length > 3) {
+            return houses.slice(0, 3).map(house => handleUnique(house)).join('\n\n') + `\n\n et ${houses.length - 3} autres...`;
+        }
+        return houses.map(house => handleUnique(house)).join('\n\n');
     }
-    else {
-        console.log('No removed houses found');
+
+    const numbers = process.env.NOTIFY_PHONE_NUMBERS?.split(',') || [];
+
+    if (newHouses.length > 0) {
+        for (const number of numbers) {
+            await twilioClient.messages.create({
+                body: `Nouvelles maisons: \n ${handleMultiple(newHouses)}`,
+                from: process.env.TWILIO_PHONE_NUMBER,
+                to: number
+            });
+        }
     }
 }
 
 async function main(): Promise<void> {
     try {
-        await webScrape();
-        await notifyChange();
+        const remaxHouses: HouseType[] = await webScrapeRemax();
+        await saveHouses(remaxHouses);
+
+        const {newHouses, removedHouses } = await getChanges();
+
+        if (newHouses.length > 0) {
+            console.log(chalk.green('New houses found'));
+            console.log(newHouses);
+        }
+
+        if (removedHouses.length > 0) {
+            console.log(chalk.red('Houses removed'));
+            console.log(removedHouses);
+        }
+
+        if (process.env.TWILIO_PHONE_NUMBER && (newHouses.length > 0 || removedHouses.length > 0)) {
+            await notifyChanges(newHouses, removedHouses);
+        }
+
     } catch (error) {
-        console.error(error);
+        if (error instanceof Error) {
+            console.error(chalk.red(error.message));
+            return;
+        }
+        console.error(chalk.red('An error occurred'), error);
     }
 }
 

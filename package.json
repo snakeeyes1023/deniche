@@ -6,20 +6,23 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "npm run build && node dist/index.js",
-    "build": "tsc"
+    "build": "tsc",
+    "compile": "tsc && node copy-env.js && pkg . --out-path bin --targets node18-linux-x64,node18-macos-x64,node18-win-x64"
   },
+  "bin": "dist/index.js",
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@types/dotenv": "^8.2.0",
     "dotenv": "^16.4.4",
+    "fs-extra": "^11.2.0",
+    "pkg": "^5.8.1",
     "typescript": "^5.3.3"
   },
   "dependencies": {
     "@types/jsdom": "^21.1.6",
     "@types/node": "^20.11.18",
-    "axios": "^1.6.7",
     "jsdom": "^24.0.0",
-    "puppeteer": "^22.0.0"
+    "puppeteer": "^22.0.0",
+    "twilio": "^4.22.0"
   }
 }
