@@ -5,6 +5,7 @@ import path from 'path';
 import chalk from 'chalk';
 import { webScrapeRemax } from './scrappers/remax-scapper';
 import twilio from "twilio";
+import { webScrapeDupropio } from './scrappers/dupropio-scrapper';
 
 const dotenvAbsolutePath = path.join(__dirname, '../.env');
 
@@ -80,7 +81,6 @@ async function getChanges(): Promise<{
     };
 }
 
-
 async function notifyChanges(newHouses: HouseType[], removedHouses: HouseType[]): Promise<void> {
     const twilioClient = twilio(
         process.env.TWILIO_ACCOUNT_SID,
@@ -111,10 +111,25 @@ async function notifyChanges(newHouses: HouseType[], removedHouses: HouseType[])
     }
 }
 
+function combineDistinctHouses(houses: HouseType[], otherHouses : HouseType[]): HouseType[] {
+    const distinctHouses = houses.filter(house => {
+        return !otherHouses.some(otherHouse => {
+            return otherHouse.id === house.id;
+        });
+    });
+
+    return distinctHouses.concat(otherHouses);
+}
+
 async function main(): Promise<void> {
     try {
-        const remaxHouses: HouseType[] = await webScrapeRemax();
-        await saveHouses(remaxHouses);
+        // const [remaxHouses, duproprioHouses] = await Promise.all([webScrapeRemax(), webScrapeDupropio()]);
+
+        // const allHouses = combineDistinctHouses(remaxHouses, duproprioHouses);
+
+        const allHouses = await webScrapeRemax();
+
+        saveHouses(allHouses);
 
         const {newHouses, removedHouses } = await getChanges();
 

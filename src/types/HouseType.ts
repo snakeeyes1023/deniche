@@ -5,4 +5,7 @@ export interface HouseType {
     price?: string | undefined | null;
     tags? : string[] | undefined | null;
     isRemoved?: boolean | undefined | null;
+    imageSrc?: string | undefined | null;
+    link?: string | undefined | null;
+    owner? : "DuProprio" | "Remax" | undefined | null;
 }

@@ -69,9 +69,13 @@ async function extractHouses(page: JSDOM): Promise<HouseType[]> {
             throw new Error('House is null');
         }
 
+        const link = house.getAttribute('href');
+
         const title: string | null | undefined = house.querySelector('.property-details--title')?.textContent?.trim();
         const address: string | null | undefined = house.querySelector('.property-details--address')?.textContent?.trim();
         const price: string | null | undefined = house.querySelector('.property-details--price')?.textContent?.trim();
+
+        const imageSrc = house.querySelector('.card-carousel__img')?.getAttribute('src');
 
         const searchULS = () => {
             const uls = house.querySelector('.small.small--light');
@@ -115,7 +119,11 @@ async function extractHouses(page: JSDOM): Promise<HouseType[]> {
             name: title || '',
             address: address || '',
             price: price || '',
-            tags: searchTags() || []
+            tags: searchTags() || [],
+            link: link || '',
+            owner: 'Remax',
+            imageSrc: imageSrc || ''
+
         });
     });
 
