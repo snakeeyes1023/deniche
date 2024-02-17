@@ -42,7 +42,6 @@ npm start
 ```
 
 Les résultats seront affichés dans le dossier /output/extract.
-Libre à vous de modifier `/src/index.ts` `(func notifyChange)` pour mettre en place des notifications, etc.
 
 ## 🚸 Attention
 
