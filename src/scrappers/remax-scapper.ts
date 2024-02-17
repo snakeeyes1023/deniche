@@ -70,6 +70,9 @@ async function extractHouses(page: JSDOM): Promise<HouseType[]> {
         }
 
         const link = house.getAttribute('href');
+        const currentDomain = process.env.REMAX_URL?.split('/')[2];
+
+        const fullLink = `https://${currentDomain}${link}`;
 
         const title: string | null | undefined = house.querySelector('.property-details--title')?.textContent?.trim();
         const address: string | null | undefined = house.querySelector('.property-details--address')?.textContent?.trim();
@@ -120,7 +123,7 @@ async function extractHouses(page: JSDOM): Promise<HouseType[]> {
             address: address || '',
             price: price || '',
             tags: searchTags() || [],
-            link: link || '',
+            link: fullLink || '',
             owner: 'Remax',
             imageSrc: imageSrc || ''
 
