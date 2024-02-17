@@ -28,7 +28,7 @@
     "@types/node": "^20.11.18",
     "axios": "^1.6.7",
     "jsdom": "^24.0.0",
-    "puppeteer": "^22.0.0",
+    "puppeteer": "^22.1.0",
     "twilio": "^4.22.0"
   }
 }
